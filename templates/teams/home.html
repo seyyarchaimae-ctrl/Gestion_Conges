@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Accueil - Gestion des Congés{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center fade-in">
+            <div class="card shadow-lg border-0">
+                <div class="card-body p-5">
+                    <h1 class="display-4 text-primary mb-4">
+                        <i class="fas fa-building me-3"></i>Système de Gestion des Congés
+                    </h1>
+                    <p class="lead text-muted mb-5">
+                        Bienvenue dans le système de gestion des congés. 
+                        Gérez facilement les équipes et les profils des collaborateurs.
+                    </p>
+                    
+                    <div class="d-grid gap-3 d-sm-flex justify-content-sm-center">
+                        <a href="{% url 'managers_page' %}" class="btn btn-primary btn-lg px-4 gap-3">
+                            <i class="fas fa-clipboard-list me-2"></i>Espace Manager
+                        </a>
+                        <a href="/teams/collaborators/page/" class="btn btn-outline-primary btn-lg px-4">
+                            <i class="fas fa-users me-2"></i>Espace Collaborateurs
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

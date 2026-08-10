@@ -1,0 +1,321 @@
+{% extends 'base.html' %}
+{% load l10n %}
+
+{% block title %}Demande de Congé{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="mb-4">
+        <a href="/teams/collaborators/{{ collaborator.id }}/profile/" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Retour au profil
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0"><i class="fas fa-calendar-plus me-2"></i>Nouvelle Demande de Congé</h3>
+                </div>
+                <div class="card-body">
+                    
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <!-- Informations du collaborateur -->
+                    <div class="alert alert-light border mb-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-1 text-primary">{{ collaborator.first_name }} {{ collaborator.last_name }}</h5>
+                                <small class="text-muted">Équipe: {{ collaborator.team.project_name|default:"Non assignée" }}</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="d-block text-muted small">Solde disponible</span>
+                                <span class="badge bg-success fs-6">{{ collaborator.remaining_leave_balance }} jours</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formulaire de demande -->
+                    <form method="post" id="conge-form" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="demi_journee" name="demi_journee" {% if form_data.demi_journee %}checked{% endif %}>
+                            <label class="form-check-label fw-bold" for="demi_journee">Demi-journée (0.5 jour)</label>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="date_debut" class="form-label fw-bold">Date de début</label>
+                                <input type="date" class="form-control" id="date_debut" name="date_debut" value="{{ form_data.date_debut|default:'' }}" required>
+                                <div id="error-date-debut" class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="date_fin" class="form-label fw-bold">Date de fin</label>
+                                <input type="date" class="form-control" id="date_fin" name="date_fin" value="{{ form_data.date_fin|default:'' }}" required>
+                                <div id="error-date-fin" class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Affichage automatique de la durée -->
+                        <div id="duree-info" class="alert alert-info d-none mb-3">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-clock me-2"></i>
+                                <span class="duree-text fw-bold">Durée demandée: <span id="nb-jours">0</span> jour(s)</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="commentaire" class="form-label fw-bold">Motif (Optionnel)</label>
+                            <textarea class="form-control" id="commentaire" name="commentaire" rows="3" placeholder="Motif de la demande, informations complémentaires...">{{ form_data.commentaire|default:'' }}</textarea>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="/teams/collaborators/{{ collaborator.id }}/profile/" class="btn btn-secondary me-md-2">Annuler</a>
+                            <button type="submit" id="submit-btn" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-2"></i>Soumettre la demande
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Variables globales
+    // Utilisation de unlocalize et remplacement de la virgule pour garantir un format numérique correct
+    let balanceStr = '{{ collaborator.remaining_leave_balance|unlocalize }}';
+    balanceStr = balanceStr.replace(',', '.').replace(/\s/g, ''); // Enlever virgules et espaces
+    const soldeDisponible = parseFloat(balanceStr);
+    
+    const today = new Date();
+    // Règle de gestion : Les demandes doivent être faites 15 jours à l'avance
+    const minDate = new Date(today);
+    minDate.setDate(today.getDate() + 15);
+    
+    // Formatage manuel pour éviter les problèmes de fuseau horaire (YYYY-MM-DD)
+    const year = minDate.getFullYear();
+    const month = String(minDate.getMonth() + 1).padStart(2, '0');
+    const day = String(minDate.getDate()).padStart(2, '0');
+    const minDateStr = `${year}-${month}-${day}`;
+    
+    // Définir les dates minimales dans les inputs pour empêcher la sélection de dates invalides
+    document.getElementById('date_debut').setAttribute('min', minDateStr);
+    document.getElementById('date_fin').setAttribute('min', minDateStr);
+
+    const demiJourneeCheckbox = document.getElementById('demi_journee');
+    const dateFinInput = document.getElementById('date_fin');
+    const dateDebutInput = document.getElementById('date_debut');
+
+    // Mettre à jour la date de fin si on change la date de début
+    dateDebutInput.addEventListener('change', function() {
+        // La date de fin ne peut pas être antérieure à la date de début
+        if (this.value) {
+            dateFinInput.setAttribute('min', this.value);
+        }
+        
+        if (demiJourneeCheckbox.checked) {
+            dateFinInput.value = this.value;
+        }
+        validerFormulaire();
+    });
+
+    demiJourneeCheckbox.addEventListener('change', function() {
+        if (this.checked) {
+            dateFinInput.disabled = true;
+            dateFinInput.value = dateDebutInput.value;
+            dateFinInput.required = false;
+            // Enlever les erreurs sur la date de fin car elle est désactivée
+            document.getElementById('error-date-fin').style.display = 'none';
+            dateFinInput.classList.remove('is-invalid');
+        } else {
+            dateFinInput.disabled = false;
+            dateFinInput.required = true;
+        }
+        validerFormulaire();
+    });
+    
+    // Fonction de validation complète
+    function validerFormulaire() {
+        let isValid = true;
+        let errorReason = "";
+        const dateDebut = dateDebutInput.value;
+        const dateFin = dateFinInput.value;
+        const submitBtn = document.getElementById('submit-btn');
+        const isDemiJournee = demiJourneeCheckbox.checked;
+        
+        // Réinitialiser les erreurs
+        clearValidationErrors();
+        
+        if (dateDebut && (dateFin || isDemiJournee)) {
+            // Parsing manuel robuste pour éviter les erreurs de fuseau horaire et d'année
+            function parseDateUTC(dateStr) {
+                if (!dateStr) return null;
+                const parts = dateStr.split('-');
+                if (parts.length === 3) {
+                    const year = parseInt(parts[0], 10);
+                    const month = parseInt(parts[1], 10) - 1;
+                    const day = parseInt(parts[2], 10);
+                    // Validation de l'année (doit être > 1900)
+                    if (year < 1900) return null;
+                    return new Date(Date.UTC(year, month, day));
+                }
+                return null;
+            }
+
+            let debut = parseDateUTC(dateDebut);
+            let fin = isDemiJournee ? (debut ? new Date(debut.getTime()) : null) : parseDateUTC(dateFin);
+
+            // Vérifier si les dates sont valides
+            if (!debut || isNaN(debut.getTime()) || (!isDemiJournee && (!fin || isNaN(fin.getTime())))) {
+                // Dates invalides
+                return false;
+            }
+            
+            // Validation 1: Date de début antérieure à date de fin
+            if (!isDemiJournee && debut > fin) {
+                errorReason = 'La date de fin doit être postérieure à la date de début';
+                showValidationError('error-date-fin', errorReason);
+                dateFinInput.classList.add('is-invalid');
+                isValid = false;
+            }
+            
+            // Validation 2: Dates dans le futur (au moins 15 jours d'avance)
+            // On compare avec la date d'aujourd'hui à minuit UTC
+            const now = new Date();
+            const todayMidnightUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+            
+            const diffTime = debut - todayMidnightUTC;
+            const daysDiff = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (daysDiff < 15) {
+                errorReason = `La demande doit être faite au moins 15 jours à l'avance (délai actuel: ${daysDiff} jours)`;
+                showValidationError('error-date-debut', errorReason);
+                dateDebutInput.classList.add('is-invalid');
+                isValid = false;
+            }
+            
+            // Calcul du nombre de jours
+            let nbJours;
+            if (isDemiJournee) {
+                nbJours = 0.5;
+            } else {
+                const diffTimeDays = fin - debut;
+                nbJours = Math.ceil(diffTimeDays / (1000 * 60 * 60 * 24)) + 1;
+            }
+            
+            if (nbJours > 0) {
+                // Validation 3: Solde suffisant
+                // On utilise une petite tolérance pour les comparaisons de flottants
+                if (nbJours > soldeDisponible + 0.001) {
+                    // Si demi-journée, afficher l'erreur sur la date de début car date de fin est désactivée
+                    const errorTargetId = isDemiJournee ? 'error-date-debut' : 'error-date-fin';
+                    const inputTarget = isDemiJournee ? dateDebutInput : dateFinInput;
+                    
+                    errorReason = `Solde insuffisant: ${nbJours} jour(s) demandé(s), ${soldeDisponible} jour(s) disponible(s)`;
+                    showValidationError(errorTargetId, errorReason);
+                    inputTarget.classList.add('is-invalid');
+                    isValid = false;
+                }
+                
+                // Validation 4: Durée maximale (30 jours)
+                if (nbJours > 30) {
+                    errorReason = `Durée maximale autorisée: 30 jours (${nbJours} jour(s) demandé(s))`;
+                    showValidationError('error-date-fin', errorReason);
+                    dateFinInput.classList.add('is-invalid');
+                    isValid = false;
+                }
+                
+                // Mettre à jour l'affichage de la durée
+                updateDureeInfo(nbJours, isValid, errorReason);
+            }
+        }
+        
+        // Activer/désactiver le bouton de soumission
+        submitBtn.disabled = !isValid;
+        
+        return isValid;
+    }
+    
+    // Fonction pour afficher les erreurs de validation
+    function showValidationError(elementId, message) {
+        const errorElement = document.getElementById(elementId);
+        errorElement.textContent = message;
+        errorElement.style.display = 'block';
+    }
+    
+    // Fonction pour effacer les erreurs de validation
+    function clearValidationErrors() {
+        const inputs = document.querySelectorAll('.form-control');
+        inputs.forEach(input => input.classList.remove('is-invalid'));
+        
+        const errors = document.querySelectorAll('.invalid-feedback');
+        errors.forEach(error => error.style.display = 'none');
+    }
+    
+    // Fonction pour mettre à jour l'affichage de la durée
+    function updateDureeInfo(nbJours, isValid, errorReason) {
+        const dureeInfo = document.getElementById('duree-info');
+        const nbJoursSpan = document.getElementById('nb-jours');
+        const dureeText = dureeInfo.querySelector('.duree-text');
+        
+        nbJoursSpan.textContent = nbJours;
+        dureeInfo.classList.remove('d-none');
+        
+        if (isValid) {
+            dureeInfo.className = 'alert alert-success mb-3';
+            dureeText.innerHTML = `<i class="fas fa-check-circle me-2"></i>Durée demandée: ${nbJours} jour(s)`;
+        } else {
+            dureeInfo.className = 'alert alert-danger mb-3';
+            dureeText.innerHTML = `<i class="fas fa-exclamation-triangle me-2"></i>Durée demandée: ${nbJours} jour(s) - ${errorReason || 'Erreurs détectées'}`;
+        }
+    }
+    
+    // Validation avant soumission du formulaire
+    document.getElementById('conge-form').addEventListener('submit', function(e) {
+        if (!validerFormulaire()) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }
+        
+        // Confirmation avant soumission
+        const dateDebut = document.getElementById('date_debut').value;
+        const dateFin = document.getElementById('date_fin').value;
+        const nbJours = document.getElementById('nb-jours').textContent;
+        const isDemiJournee = document.getElementById('demi_journee').checked;
+        
+        const confirmation = confirm(
+            `Confirmez-vous votre demande de congé ?\n\n` +
+            `Période: du ${new Date(dateDebut).toLocaleDateString('fr-FR')} au ${isDemiJournee ? new Date(dateDebut).toLocaleDateString('fr-FR') : new Date(dateFin).toLocaleDateString('fr-FR')}\n` +
+            `Durée: ${nbJours} jour(s)\n` +
+            `Solde restant après validation: ${(soldeDisponible - parseFloat(nbJours))} jour(s)`
+        );
+        
+        if (!confirmation) {
+            e.preventDefault();
+            return false;
+        }
+    });
+    
+    // Écouteurs d'événements pour validation en temps réel
+    document.getElementById('date_debut').addEventListener('change', validerFormulaire);
+    document.getElementById('date_fin').addEventListener('change', validerFormulaire);
+    document.getElementById('date_debut').addEventListener('blur', validerFormulaire);
+    document.getElementById('date_fin').addEventListener('blur', validerFormulaire);
+    
+    // Validation initiale
+    validerFormulaire();
+</script>
+{% endblock %}

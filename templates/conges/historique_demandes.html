@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+
+{% block title %}Historique des demandes{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="mb-4">
+        <a href="/teams/collaborators/{{ collaborator.id }}/profile/" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Retour au profil
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h3 class="mb-0"><i class="fas fa-history me-2"></i>Historique de mes demandes</h3>
+                    <a href="{% url 'conges:demande_conge_form' collaborator.id %}" class="btn btn-light btn-sm">
+                        <i class="fas fa-plus me-2"></i>Nouvelle demande
+                    </a>
+                </div>
+                <div class="card-body">
+                    
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    {% if demandes %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Date demande</th>
+                                        <th>Période</th>
+                                        <th>Durée</th>
+                                        <th>Statut</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for demande in demandes %}
+                                        <tr>
+                                            <td>{{ demande.date_creation|date:"d/m/Y" }}</td>
+                                            <td>
+                                                <div>Du {{ demande.date_debut|date:"d/m/Y" }}</div>
+                                                <div>Au {{ demande.date_fin|date:"d/m/Y" }}</div>
+                                            </td>
+                                            <td><span class="badge bg-secondary">{{ demande.nb_jours_demandes }} jours</span></td>
+                                            <td>
+                                                {% if demande.statut == 'EN_COURS' %}
+                                                    <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>En cours</span>
+                                                {% elif demande.statut == 'VALIDEE' %}
+                                                    <span class="badge bg-success"><i class="fas fa-check me-1"></i>Validée</span>
+                                                {% elif demande.statut == 'REFUSEE' %}
+                                                    <span class="badge bg-danger"><i class="fas fa-times me-1"></i>Refusée</span>
+                                                {% elif demande.statut == 'ANNULEE' %}
+                                                    <span class="badge bg-secondary"><i class="fas fa-ban me-1"></i>Annulée</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    {% if demande.peut_etre_modifiee %}
+                                                        <a href="{% url 'conges:modifier_demande' demande.id %}" class="btn btn-sm btn-outline-warning" title="Modifier">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <a href="{% url 'conges:annuler_demande' demande.id %}" class="btn btn-sm btn-outline-danger" title="Annuler" onclick="return confirm('Êtes-vous sûr de vouloir annuler cette demande ?');">
+                                                            <i class="fas fa-times"></i>
+                                                        </a>
+                                                    {% endif %}
+                                                    
+                                                    {% if demande.historique.exists %}
+                                                        <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#historique-{{ demande.id }}" aria-expanded="false" title="Voir l'historique">
+                                                            <i class="fas fa-history"></i>
+                                                        </button>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% if demande.historique.exists %}
+                                        <tr>
+                                            <td colspan="5" class="p-0 border-0">
+                                                <div class="collapse" id="historique-{{ demande.id }}">
+                                                    <div class="card card-body bg-light m-2 border-0 shadow-sm">
+                                                        <h6 class="text-primary"><i class="fas fa-info-circle me-2"></i>Historique des modifications</h6>
+                                                        <ul class="list-group list-group-flush bg-transparent">
+                                                            {% for hist in demande.historique.all %}
+                                                                <li class="list-group-item bg-transparent ps-0">
+                                                                    <div class="d-flex justify-content-between">
+                                                                        <span>
+                                                                            <strong>{{ hist.date_action|date:"d/m/Y H:i" }}</strong> - 
+                                                                            <span class="badge bg-secondary">{{ hist.get_action_display }}</span>
+                                                                            par {{ hist.auteur|default:hist.demande.collaborateur }}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div class="ms-3 mt-1 small text-muted">
+                                                                        {% if hist.motif %}
+                                                                            <div><i class="fas fa-comment me-1"></i>Motif : {{ hist.motif }}</div>
+                                                                        {% endif %}
+                                                                        {% if hist.ancienne_valeur %}
+                                                                            <div><i class="fas fa-arrow-left me-1"></i>Avant : {{ hist.ancienne_valeur }}</div>
+                                                                        {% endif %}
+                                                                        {% if hist.nouvelle_valeur %}
+                                                                            <div><i class="fas fa-arrow-right me-1"></i>Après : {{ hist.nouvelle_valeur }}</div>
+                                                                        {% endif %}
+                                                                    </div>
+                                                                </li>
+                                                            {% endfor %}
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info text-center py-4">
+                            <i class="fas fa-info-circle fa-2x mb-3 d-block"></i>
+                            <p class="mb-3">Vous n'avez aucune demande de congé pour le moment.</p>
+                            <a href="{% url 'conges:demande_conge_form' collaborator.id %}" class="btn btn-primary">
+                                <i class="fas fa-plus-circle me-2"></i>Faire une première demande
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

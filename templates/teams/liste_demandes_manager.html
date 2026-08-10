@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestion des Demandes{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="mb-4">
+        <a href="{% url 'managers_page' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Retour à la liste des managers
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h3 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Demandes de congés en attente</h3>
+                    <span class="badge bg-light text-primary">Manager: {{ manager.first_name }} {{ manager.last_name }}</span>
+                </div>
+                <div class="card-body">
+                    
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Collaborateur</th>
+                                    <th>Date début</th>
+                                    <th>Date fin</th>
+                                    <th>Nb jours</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for demande in demandes %}
+                                <tr>
+                                    <td class="fw-bold">{{ demande.collaborateur.first_name }} {{ demande.collaborateur.last_name }}</td>
+                                    <td>{{ demande.date_debut|date:"d/m/Y" }}</td>
+                                    <td>{{ demande.date_fin|date:"d/m/Y" }}</td>
+                                    <td><span class="badge bg-secondary">{{ demande.nb_jours_demandes }}j</span></td>
+                                    <td>
+                                        <div class="d-flex gap-2 justify-content-center">
+                                            <!-- Approuver -->
+                                            <form action="{% url 'conges:decision_manager' demande.id %}" method="post">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="decision" value="VALIDEE">
+                                                <button type="submit" class="btn btn-success btn-sm" title="Approuver">
+                                                    <i class="fas fa-check me-1"></i>Approuver
+                                                </button>
+                                            </form>
+
+                                            <!-- Refuser -->
+                                            <form action="{% url 'conges:decision_manager' demande.id %}" method="post" class="d-flex gap-2">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="decision" value="REFUSEE">
+                                                <input type="text" name="motif_refus" class="form-control form-control-sm" placeholder="Motif du refus" required style="width: 150px;">
+                                                <button type="submit" class="btn btn-danger btn-sm" title="Refuser">
+                                                    <i class="fas fa-times me-1"></i>Refuser
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">
+                                        <i class="fas fa-check-circle me-2"></i>Aucune demande en attente
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}Modifier la demande{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="mb-4">
+        <a href="{% url 'conges:historique_demandes' demande.collaborateur.id %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Retour à l'historique
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0"><i class="fas fa-edit me-2"></i>Modifier la demande de congé</h4>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <div class="alert alert-info d-flex align-items-center">
+                        <i class="fas fa-info-circle fa-2x me-3"></i>
+                        <div>
+                            <strong>Information :</strong> Vous ne pouvez modifier que la date de fin de votre demande.
+                            La date de début (<strong>{{ demande.date_debut|date:"d/m/Y" }}</strong>) reste inchangée.
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Date de début</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                                <input type="text" class="form-control" value="{{ demande.date_debut|date:'Y-m-d' }}" disabled>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="date_fin" class="form-label fw-bold">Nouvelle date de fin</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                                <input type="date" class="form-control" id="date_fin" name="date_fin" 
+                                       value="{{ demande.date_fin|date:'Y-m-d' }}" required
+                                       min="{{ demande.date_debut|date:'Y-m-d' }}">
+                            </div>
+                            <div class="form-text text-muted">La date de fin doit être postérieure ou égale à la date de début.</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="motif" class="form-label fw-bold">Motif de la modification <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="motif" name="motif" rows="3" required placeholder="Veuillez expliquer la raison de cette modification..."></textarea>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'conges:historique_demandes' demande.collaborateur.id %}" class="btn btn-light me-md-2">Annuler</a>
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-save me-2"></i>Enregistrer les modifications
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

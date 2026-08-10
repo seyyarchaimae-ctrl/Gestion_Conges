@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Confirmer l'annulation{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="mb-4">
+        <a href="{% url 'conges:historique_demandes' demande.collaborateur.id %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Retour à l'historique
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Confirmer l'annulation</h4>
+                </div>
+                <div class="card-body">
+                    <p class="lead text-center mb-4">Êtes-vous sûr de vouloir annuler cette demande de congé ?</p>
+                    
+                    <div class="card bg-light mb-4 border-0">
+                        <div class="card-body">
+                            <div class="row mb-2">
+                                <div class="col-sm-4 fw-bold">Période :</div>
+                                <div class="col-sm-8">{{ demande.get_periode_readable }}</div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-sm-4 fw-bold">Durée :</div>
+                                <div class="col-sm-8">{{ demande.get_duree_readable }}</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-4 fw-bold">Statut actuel :</div>
+                                <div class="col-sm-8">
+                                    <span class="badge bg-{{ demande.get_statut_display_color }}">{{ demande.get_statut_display }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning d-flex align-items-center">
+                        <i class="fas fa-exclamation-circle fa-2x me-3"></i>
+                        <div>
+                            <strong>Attention :</strong> Cette action est irréversible. La demande passera au statut "Annulée".
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                            <a href="{% url 'conges:historique_demandes' demande.collaborateur.id %}" class="btn btn-light me-md-2">Non, retourner</a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-times-circle me-2"></i>Oui, confirmer l'annulation
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
